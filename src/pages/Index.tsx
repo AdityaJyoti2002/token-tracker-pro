@@ -1,20 +1,32 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { setTokens, setLoading, setError } from '@/store/slices/tokensSlice';
+import { setSearchQuery, setPriceRange, setVolumeRange, setChangeRange, clearFilters } from '@/store/slices/filtersSlice';
 import { useTokenData } from '@/hooks/useTokenData';
 import { useSortedTokens } from '@/hooks/useSortedTokens';
+import { useFilteredTokens } from '@/hooks/useFilteredTokens';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
+import { useAlertMonitoring } from '@/hooks/useAlertMonitoring';
 import { TabSwitcher } from '@/components/organisms/TabSwitcher';
 import { TokenTable } from '@/components/organisms/TokenTable';
+import { AnalyticsDashboard } from '@/components/organisms/AnalyticsDashboard';
+import { AlertsPanel } from '@/components/organisms/AlertsPanel';
+import { SearchBar } from '@/components/molecules/SearchBar';
+import { FilterPanel } from '@/components/molecules/FilterPanel';
 import { LoadingSkeleton } from '@/components/atoms/LoadingSkeleton';
-import { Activity, AlertCircle } from 'lucide-react';
+import { Activity, AlertCircle, BarChart3 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const Index = () => {
   const dispatch = useDispatch();
   const { tokens, loading, error } = useSelector((state: RootState) => state.tokens);
+  const filters = useSelector((state: RootState) => state.filters);
   const { data, isLoading, isError, error: queryError, refetch } = useTokenData();
+  
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Update Redux store when data changes
   useEffect(() => {
@@ -33,11 +45,15 @@ const Index = () => {
     }
   }, [isError, queryError, dispatch]);
 
-  // Get sorted tokens based on active tab and sort settings
-  const sortedTokens = useSortedTokens(tokens);
+  // Apply filters and sorting
+  const filteredTokens = useFilteredTokens(tokens);
+  const sortedTokens = useSortedTokens(filteredTokens);
 
   // Enable real-time price updates
   useRealtimeUpdates(tokens);
+  
+  // Monitor price alerts
+  useAlertMonitoring(tokens);
 
   return (
     <div className="min-h-screen bg-background">
@@ -71,9 +87,48 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-6">
+          {/* Analytics Toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showAnalytics ? 'default' : 'outline'}
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className="gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </Button>
+          </div>
+
+          {/* Analytics Dashboard */}
+          {showAnalytics && !loading && (
+            <AnalyticsDashboard tokens={tokens} />
+          )}
+
+          {/* Alerts Panel */}
+          {!loading && <AlertsPanel tokens={tokens} />}
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <SearchBar
+              value={filters.searchQuery}
+              onChange={(value) => dispatch(setSearchQuery(value))}
+            />
+            <div className="flex items-center gap-2">
+              <FilterPanel
+                priceRange={filters.priceRange}
+                volumeRange={filters.volumeRange}
+                changeRange={filters.changeRange}
+                onPriceRangeChange={(range) => dispatch(setPriceRange(range))}
+                onVolumeRangeChange={(range) => dispatch(setVolumeRange(range))}
+                onChangeRangeChange={(range) => dispatch(setChangeRange(range))}
+                onClear={() => dispatch(clearFilters())}
+              />
+            </div>
+          </div>
+
           {/* Tab Switcher */}
           <div className="flex items-center justify-between">
-            <TabSwitcher tokens={tokens} />
+            <TabSwitcher tokens={filteredTokens} />
             <div className="text-sm text-muted-foreground">
               {sortedTokens.length} token{sortedTokens.length !== 1 ? 's' : ''} found
             </div>

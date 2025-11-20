@@ -2,6 +2,7 @@ import React from 'react';
 import { Token } from '@/types/token';
 import { PriceCell } from '@/components/atoms/PriceCell';
 import { ChangeCell } from '@/components/atoms/ChangeCell';
+import { SparklineChart } from '@/components/atoms/SparklineChart';
 import { formatNumber, getTimeAgo } from '@/utils/format';
 import {
   HoverCard,
@@ -66,9 +67,16 @@ export const TokenRow = React.memo(({ token, onClick }: TokenRowProps) => {
         <PriceCell price={token.price} direction={token.priceDirection} />
       </div>
 
-      {/* 24h Change */}
+      {/* 24h Change with Sparkline */}
       <div className="text-right">
-        <ChangeCell value={token.priceChange24h} />
+        <div className="flex items-center justify-end gap-2">
+          <SparklineChart 
+            trend={token.priceChange24h >= 0 ? 'up' : 'down'} 
+            basePrice={token.price}
+            change24h={token.priceChange24h}
+          />
+          <ChangeCell value={token.priceChange24h} />
+        </div>
       </div>
 
       {/* Volume */}
